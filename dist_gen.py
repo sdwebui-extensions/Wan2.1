@@ -323,37 +323,6 @@ def generate(rank, world_size, args):
             offload_model=args.offload_model)
 
     else:
-        if args.prompt is None:
-            args.prompt = EXAMPLE_PROMPT[args.task]["prompt"]
-        if args.image is None:
-            args.image = EXAMPLE_PROMPT[args.task]["image"]
-        logging.info(f"Input prompt: {args.prompt}")
-        logging.info(f"Input image: {args.image}")
-
-        img = Image.open(args.image).convert("RGB")
-        if args.use_prompt_extend:
-            logging.info("Extending prompt ...")
-            if rank == 0:
-                prompt_output = prompt_expander(
-                    args.prompt,
-                    tar_lang=args.prompt_extend_target_lang,
-                    image=img,
-                    seed=args.base_seed)
-                if prompt_output.status == False:
-                    logging.info(
-                        f"Extending prompt failed: {prompt_output.message}")
-                    logging.info("Falling back to original prompt.")
-                    input_prompt = args.prompt
-                else:
-                    input_prompt = prompt_output.prompt
-                input_prompt = [input_prompt]
-            else:
-                input_prompt = [None]
-            if dist.is_initialized():
-                dist.broadcast_object_list(input_prompt, src=0)
-            args.prompt = input_prompt[0]
-            logging.info(f"Extended prompt: {args.prompt}")
-
         logging.info("Creating WanI2V pipeline.")
         wan_i2v = wan.WanI2V(
             config=cfg,
@@ -376,10 +345,12 @@ def generate(rank, world_size, args):
             if rank == 0:
                 task_dict = [json.load(open(task_json))]
                 os.remove(task_json)
+                logging.info("loda and remove json ...")
             else:
                 task_dict = [None]
             if dist.is_initialized():
                 dist.broadcast_object_list(task_dict, src=0)
+                logging.info("sync json ...")
             task_dict = task_dict[0]
             video = wan_i2v.generate(
                 task_dict["prompt"],
@@ -402,6 +373,7 @@ def generate(rank, world_size, args):
                     nrow=1,
                     normalize=True,
                     value_range=(-1, 1))
+                logging.info("save video ...")
 
 
 if __name__ == "__main__":
