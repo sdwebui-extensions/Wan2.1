@@ -17,6 +17,7 @@ from wan.configs import WAN_CONFIGS, SIZE_CONFIGS, MAX_AREA_CONFIGS, SUPPORTED_S
 from wan.utils.prompt_extend import DashScopePromptExpander, QwenPromptExpander
 from wan.utils.utils import cache_video, cache_image, str2bool
 from multiprocessing.queues import Queue
+import json
 
 EXAMPLE_PROMPT = {
     "t2v-1.3B": {
@@ -365,44 +366,35 @@ def generate(rank, world_size, args):
         )
 
         logging.info("Generating video ...")
-        video = wan_i2v.generate(
-            args.prompt,
-            img,
-            max_area=MAX_AREA_CONFIGS[args.size],
-            frame_num=args.frame_num,
-            shift=args.sample_shift,
-            sample_solver=args.sample_solver,
-            sampling_steps=args.sample_steps,
-            guide_scale=args.sample_guide_scale,
-            seed=args.base_seed,
-            offload_model=args.offload_model)
-
-    if rank == 0:
-        if args.save_file is None:
-            formatted_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            formatted_prompt = args.prompt.replace(" ", "_").replace("/",
-                                                                     "_")[:50]
-            suffix = '.png' if "t2i" in args.task else '.mp4'
-            args.save_file = f"{args.task}_{args.size.replace('*','x') if sys.platform=='win32' else args.size}_{args.ulysses_size}_{args.ring_size}_{formatted_prompt}_{formatted_time}" + suffix
-
-        if "t2i" in args.task:
-            logging.info(f"Saving generated image to {args.save_file}")
-            cache_image(
-                tensor=video.squeeze(1)[None],
-                save_file=args.save_file,
-                nrow=1,
-                normalize=True,
-                value_range=(-1, 1))
-        else:
-            logging.info(f"Saving generated video to {args.save_file}")
-            cache_video(
-                tensor=video[None],
-                save_file=args.save_file,
-                fps=cfg.sample_fps,
-                nrow=1,
-                normalize=True,
-                value_range=(-1, 1))
-    logging.info("Finished.")
+        while True:
+            task_json = f'{args.task}_{args.ulysses_size}_{args.ring_size}.json'
+            if not os.path.exists(task_json):
+                time.sleep(1)
+                continue
+            time.sleep(0.1)
+            task_dict = json.load(open(task_json))
+            os.remove(task_json)
+            video = wan_i2v.generate(
+                task_dict["prompt"],
+                task_dict["image"],
+                n_prompt=task_dict["n_prompt"],
+                max_area=MAX_AREA_CONFIGS[task_dict["size"]],
+                frame_num=task_dict["frame_num"],
+                shift=task_dict["sample_shift"],
+                sample_solver=task_dict["sample_solver"],
+                sampling_steps=task_dict["sample_steps"],
+                guide_scale=task_dict["cfg"],
+                seed=task_dict["seed"],
+                offload_model=False)
+            if rank == 0:
+                save_file = task_json["save_file"]
+                cache_video(
+                    tensor=video[None],
+                    save_file=save_file,
+                    fps=cfg.sample_fps,
+                    nrow=1,
+                    normalize=True,
+                    value_range=(-1, 1))
 
 
 if __name__ == "__main__":

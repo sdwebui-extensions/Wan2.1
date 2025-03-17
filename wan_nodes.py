@@ -13,6 +13,9 @@ from wan.configs import WAN_CONFIGS, SIZE_CONFIGS, MAX_AREA_CONFIGS
 from wan.text2video import WanT2V
 from wan.image2video import WanI2V
 from wan.utils.utils import cache_video
+import json
+import uuid
+import time
 
 wan_configs = {
     'Wan-AI/Wan2.1-T2V-14B': 't2v-14B',
@@ -20,8 +23,6 @@ wan_configs = {
     'Wan-AI/Wan2.1-I2V-14B-480P': 'i2v-14B',
     'Wan-AI/Wan2.1-I2V-14B-720P': 'i2v-14B',
 }
-os.environ['MASTER_ADDR'] = 'localhost'
-os.environ['MASTER_PORT'] = '5678'
 def model_load(rank, world_size, ckpt_dir, qins, qout, ulysses_size=1, ring_size=1, task='t2v-14B'):
     local_rank = rank
     device = local_rank
@@ -44,8 +45,8 @@ def model_load(rank, world_size, ckpt_dir, qins, qout, ulysses_size=1, ring_size
 
         initialize_model_parallel(
             sequence_parallel_degree=dist.get_world_size(),
-            ring_degree=args.ring_size,
-            ulysses_degree=args.ulysses_size,
+            ring_degree=ring_size,
+            ulysses_degree=ulysses_size,
         )
 
     cfg = WAN_CONFIGS[task]
@@ -153,21 +154,9 @@ class PaiWanxModelLoad:
         else:
             print('no model find,')
         world_size = torch.cuda.device_count()
-        qins = []
-        for _ in range(world_size):
-            qins.append(Queue())
-        qout = Queue()
-        ulysses_size = world_size
-        ring_size = 1
-        process_infos = [Process(
-            target=model_load,
-            args=(rank, world_size, model_path, qins, qout, ulysses_size, ring_size, task),
-        ) for rank in range(world_size)]
-        [_.start() for _ in process_infos]
+        os.system(f'torchrun --nproc_per_node={world_size} dist_gen.py --task {task} --size 1280*720 --ckpt_dir {model_path} --dit_fsdp --t5_fsdp --ulysses_size {world_size} --prompt "Two cats boxing."')
         outs = {
-            "qins": qins,
-            "qout": qout,
-            "process_infos": process_infos,
+            "task_json": f'{task}_{world_size}_1.json',
         }
         return (outs, )
         
@@ -198,15 +187,32 @@ class PaiWanxI2VXdit:
 
     CATEGORY = "pai_custom/pai_img_gen"
     def encode(self, prompt, negative_prompt, steps, cfg_scale, seed, size, wan_model, image, frame_num, sample_shift, sample_solver):
-        qins = wan_model["qins"]
-        qout = wan_model["qout"]
         input_img_path = "/code/wanx_input_img.png"
         image = (image[0] * 255).numpy().astype(np.uint8)
         image = Image.fromarray(image)
         image.save(input_img_path)
-        for qin in qins:
-            qin.put((prompt, size, frame_num, sample_shift, sample_solver, steps, cfg_scale, seed, input_img_path, negative_prompt))
-        video_path = qout.get()
+        json_name = wan_model["task_json"]
+        out_path =  os.path.join(folder_paths.output_directory, f"{uuid.uuid4()}.mp4")
+        config = {
+            "prompt": prompt,
+            "image": input_img_path,
+            "frame_num": frame_num,
+            "sample_steps": steps,
+            "cfg": cfg_scale,
+            "seed": seed,
+            "n_prompt": negative_prompt,
+            "size": size,
+            "sample_solver": sample_solver,
+            "sample_shift": sample_shift,
+            "save_file": out_path,
+        }
+        json.dump(config, open(json_name, "w"), indent=4)
+        while True:
+            if not os.path.exists(out_path):
+                time.sleep(1)
+            else:
+                break
+        video_path = out_path
         return (video_path, )
 
 NODE_CLASS_MAPPINGS = {
