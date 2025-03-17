@@ -20,6 +20,8 @@ wan_configs = {
     'Wan-AI/Wan2.1-I2V-14B-480P': 'i2v-14B',
     'Wan-AI/Wan2.1-I2V-14B-720P': 'i2v-14B',
 }
+os.environ['MASTER_ADDR'] = 'localhost'
+os.environ['MASTER_PORT'] = '5678'
 def model_load(rank, world_size, ckpt_dir, qins, qout, ulysses_size=1, ring_size=1, task='t2v-14B'):
     local_rank = rank
     device = local_rank
@@ -157,7 +159,6 @@ class PaiWanxModelLoad:
         qout = Queue()
         ulysses_size = world_size
         ring_size = 1
-        os.environ["PYTHONPATH"] = "/code/ComfyUI;/code/ComfyUI/custom_nodes/Wan2_1"
         process_infos = [Process(
             target=model_load,
             args=(rank, world_size, model_path, qins, qout, ulysses_size, ring_size, task),
