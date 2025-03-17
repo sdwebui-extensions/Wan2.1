@@ -9,10 +9,10 @@ from multiprocessing import Queue, Process
 
 from PIL import Image
 import folder_paths
-from .wan.configs import WAN_CONFIGS, SIZE_CONFIGS, MAX_AREA_CONFIGS
-from .wan.text2video import WanT2V
-from .wan.image2video import WanI2V
-from .wan.utils.utils import cache_video
+from wan.configs import WAN_CONFIGS, SIZE_CONFIGS, MAX_AREA_CONFIGS
+from wan.text2video import WanT2V
+from wan.image2video import WanI2V
+from wan.utils.utils import cache_video
 
 wan_configs = {
     'Wan-AI/Wan2.1-T2V-14B': 't2v-14B',
