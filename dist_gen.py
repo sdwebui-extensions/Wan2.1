@@ -16,7 +16,6 @@ import wan
 from wan.configs import WAN_CONFIGS, SIZE_CONFIGS, MAX_AREA_CONFIGS, SUPPORTED_SIZES
 from wan.utils.prompt_extend import DashScopePromptExpander, QwenPromptExpander
 from wan.utils.utils import cache_video, cache_image, str2bool
-import torch.multiprocessing as mp
 from multiprocessing.queues import Queue
 
 EXAMPLE_PROMPT = {
@@ -208,10 +207,8 @@ def _init_logging(rank):
         logging.basicConfig(level=logging.ERROR)
 
 
-def generate(args):
-    rank = int(os.getenv("RANK", 0))
-    world_size = int(os.getenv("WORLD_SIZE", 1))
-    local_rank = int(os.getenv("LOCAL_RANK", 0))
+def generate(rank, world_size, args):
+    local_rank = rank
     device = local_rank
     _init_logging(rank)
 
@@ -410,4 +407,15 @@ def generate(args):
 
 if __name__ == "__main__":
     args = _parse_args()
-    generate(args)
+    world_size = torch.cuda.device_count()
+    process_infos = torch.multiprocessing.spawn(
+        generate,
+        args=(world_size, args),
+        nprocs=world_size,
+        join=False,
+    )
+    print("i am here")
+    import time
+    while True:
+        time.sleep(10)
+        print("i am here")
