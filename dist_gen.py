@@ -354,7 +354,7 @@ def generate(rank, world_size, args):
             task_dict = task_dict[0]
             video = wan_i2v.generate(
                 task_dict["prompt"],
-                task_dict["image"],
+                Image.open(task_dict["image"]).convert("RGB"),
                 n_prompt=task_dict["n_prompt"],
                 max_area=MAX_AREA_CONFIGS[task_dict["size"]],
                 frame_num=task_dict["frame_num"],
