@@ -18,6 +18,7 @@ from wan.utils.prompt_extend import DashScopePromptExpander, QwenPromptExpander
 from wan.utils.utils import cache_video, cache_image, str2bool
 from multiprocessing.queues import Queue
 import json
+import time
 
 EXAMPLE_PROMPT = {
     "t2v-1.3B": {
@@ -406,14 +407,9 @@ def generate(rank, world_size, args):
 if __name__ == "__main__":
     args = _parse_args()
     world_size = torch.cuda.device_count()
-    process_infos = torch.multiprocessing.spawn(
+    torch.multiprocessing.spawn(
         generate,
         args=(world_size, args),
         nprocs=world_size,
-        join=False,
+        join=True,
     )
-    print("i am here")
-    import time
-    while True:
-        time.sleep(10)
-        print("i am here")
