@@ -372,8 +372,14 @@ def generate(rank, world_size, args):
                 time.sleep(1)
                 continue
             time.sleep(0.1)
-            task_dict = json.load(open(task_json))
-            os.remove(task_json)
+            if rank == 0:
+                task_dict = [json.load(open(task_json))]
+                os.remove(task_json)
+            else:
+                task_dict = [None]
+            if dist.is_initialized():
+                dist.broadcast_object_list(task_dict, src=0)
+            task_dict = task_dict[0]
             video = wan_i2v.generate(
                 task_dict["prompt"],
                 task_dict["image"],
