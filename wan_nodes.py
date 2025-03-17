@@ -154,7 +154,7 @@ class PaiWanxModelLoad:
         else:
             print('no model find,')
         world_size = torch.cuda.device_count()
-        os.system(f'nohup torchrun --nproc_per_node={world_size} dist_gen.py --task {task} --size 1280*720 --ckpt_dir {model_path} --dit_fsdp --t5_fsdp --ulysses_size {world_size} &')
+        os.system(f'export CUDA_VISIBLE_DEVICES={str(list(range(world_size)))[1:-1].replace(" ", "")} ;nohup torchrun --nproc_per_node={world_size} dist_gen.py --task {task} --size 1280*720 --ckpt_dir {model_path} --dit_fsdp --t5_fsdp --ulysses_size {world_size} &')
         outs = {
             "task_json": f'{task}_{world_size}_1.json',
         }
