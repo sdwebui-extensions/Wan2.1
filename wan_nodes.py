@@ -155,9 +155,11 @@ class PaiWanxModelLoad:
         else:
             print('no model find,')
         world_size = torch.cuda.device_count()
-        os.system(f'export CUDA_VISIBLE_DEVICES={str(list(range(world_size)))[1:-1].replace(" ", "")} ;nohup torchrun --nproc_per_node={world_size} dist_gen.py --task {task} --size 1280*720 --ckpt_dir {model_path} --dit_fsdp --t5_fsdp --ulysses_size {world_size} &')
+        cmd = f'export CUDA_VISIBLE_DEVICES={str(list(range(world_size)))[1:-1].replace(" ", "")} ;nohup torchrun --nproc_per_node={world_size} dist_gen.py --task {task} --size 1280*720 --ckpt_dir {model_path} --dit_fsdp --t5_fsdp --ulysses_size {world_size} &'
+        os.system(cmd)
         outs = {
             "task_json": f'{task}_{world_size}_1.json',
+            "cmd": cmd
         }
         return (outs, )
         
@@ -213,7 +215,7 @@ class PaiWanxI2VXdit:
                 time.sleep(1)
                 tmp = subprocess.Popen('ps -uax | grep dist_gen', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if len(tmp.stdout.readlines())<3:
-                    break
+                    os.system(wan_model["cmd"])
             else:
                 break
         video_path = out_path
