@@ -216,6 +216,8 @@ class PaiWanxI2VXdit:
                 tmp = subprocess.Popen('ps -uax | grep dist_gen', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if len(tmp.stdout.readlines())<3:
                     os.system(wan_model["cmd"])
+                    if not os.path.exists(json_name):
+                        json.dump(config, open(json_name, "w"), indent=4)
             else:
                 break
         video_path = out_path
