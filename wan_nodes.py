@@ -16,6 +16,7 @@ from wan.utils.utils import cache_video
 import json
 import uuid
 import time
+import subprocess
 
 wan_configs = {
     'Wan-AI/Wan2.1-T2V-14B': 't2v-14B',
@@ -210,6 +211,9 @@ class PaiWanxI2VXdit:
         while True:
             if not os.path.exists(out_path):
                 time.sleep(1)
+                tmp = subprocess.Popen('ps -uax | grep dist_gen', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if len(tmp.stdout.readlines())<3:
+                    break
             else:
                 break
         video_path = out_path

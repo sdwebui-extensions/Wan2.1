@@ -365,7 +365,7 @@ def generate(rank, world_size, args):
                 seed=task_dict["seed"],
                 offload_model=False)
             if rank == 0:
-                save_file = task_json["save_file"]
+                save_file = task_dict["save_file"]
                 cache_video(
                     tensor=video[None],
                     save_file=save_file,
