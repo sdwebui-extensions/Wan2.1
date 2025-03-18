@@ -209,8 +209,11 @@ def _init_logging(rank):
         logging.basicConfig(level=logging.ERROR)
 
 
-def generate(rank, world_size, args):
-    local_rank = rank
+def generate(args):
+    rank = int(os.getenv("RANK", 0))
+    world_size = int(os.getenv("WORLD_SIZE", 1))
+    local_rank = int(os.getenv("LOCAL_RANK", 0))
+    print(rank, world_size, local_rank)
     device = local_rank
     _init_logging(rank)
 
@@ -377,10 +380,11 @@ def generate(rank, world_size, args):
 
 if __name__ == "__main__":
     args = _parse_args()
-    world_size = torch.cuda.device_count()
-    torch.multiprocessing.spawn(
-        generate,
-        args=(world_size, args),
-        nprocs=world_size,
-        join=True,
-    )
+    generate(args)
+    # world_size = torch.cuda.device_count()
+    # torch.multiprocessing.spawn(
+    #     generate,
+    #     args=(world_size, args),
+    #     nprocs=world_size,
+    #     join=True,
+    # )
