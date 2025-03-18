@@ -334,7 +334,7 @@ def generate(rank, world_size, args):
             use_usp=(args.ulysses_size > 1 or args.ring_size > 1),
             t5_cpu=args.t5_cpu,
         )
-
+        dist.barrier()
         logging.info("Generating video ...")
         while True:
             task_json = f'{args.task}_{args.ulysses_size}_{args.ring_size}.json'
@@ -342,16 +342,12 @@ def generate(rank, world_size, args):
                 time.sleep(1)
                 continue
             time.sleep(0.1)
+            task_dict = json.load(open(task_json))
+            dist.barrier()
             if rank == 0:
-                task_dict = [json.load(open(task_json))]
                 os.remove(task_json)
                 logging.info("loda and remove json ...")
-            else:
-                task_dict = [None]
-            if dist.is_initialized():
-                dist.broadcast_object_list(task_dict, src=0)
-                logging.info("sync json ...")
-            task_dict = task_dict[0]
+            dist.barrier()
             video = wan_i2v.generate(
                 task_dict["prompt"],
                 Image.open(task_dict["image"]).convert("RGB"),
@@ -364,6 +360,7 @@ def generate(rank, world_size, args):
                 guide_scale=task_dict["cfg"],
                 seed=task_dict["seed"],
                 offload_model=False)
+            dist.barrier()
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
             if rank == 0:
