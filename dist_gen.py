@@ -364,6 +364,8 @@ def generate(rank, world_size, args):
                 guide_scale=task_dict["cfg"],
                 seed=task_dict["seed"],
                 offload_model=False)
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
             if rank == 0:
                 save_file = task_dict["save_file"]
                 cache_video(
